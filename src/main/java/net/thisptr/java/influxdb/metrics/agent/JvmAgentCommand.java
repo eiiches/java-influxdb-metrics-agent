@@ -193,6 +193,12 @@ public class JvmAgentCommand implements Runnable {
 
 			for (final InfluxDB conn : conns) {
 				try {
+					conn.createDatabase(database);
+				} catch (Exception e) {
+					LOG.warn("Failed to create a database " + database + " on {}.", conn, e);
+					continue;
+				}
+				try {
 					conn.write(batchPoints.build());
 				} catch (Exception e) {
 					LOG.warn("Sending metrics to {} failed.", conn, e);

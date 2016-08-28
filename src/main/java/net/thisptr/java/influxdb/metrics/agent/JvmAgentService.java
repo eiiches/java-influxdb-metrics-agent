@@ -41,10 +41,9 @@ public class JvmAgentService {
 			for (final HostAndPort server : config.servers) {
 				try {
 					final InfluxDB conn = InfluxDBFactory.connect("http://" + server, config.user, config.password);
-					conn.createDatabase(config.database);
 					conns.add(conn);
 				} catch (Exception e) {
-					LOG.warn("Failed to create a database " + config.database + " on {}.", server, e);
+					LOG.warn("Failed to connect to InfluxDB server {}.", server, e);
 				}
 			}
 			executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("InfluxDB Metrics Agent %d").setDaemon(true).build());

@@ -9,7 +9,7 @@ Installation
 1. Clone this repository and `mvn clean package` to build the artifact.
 2. Put `target/java-influxdb-metrics-agent-{version}.jar` somewhere on your server.
 
-#### Runtime dependency
+#### Runtime dependencies
 
 ##### slf4j-api (required)
 
