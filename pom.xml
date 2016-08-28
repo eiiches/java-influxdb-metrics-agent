@@ -81,6 +81,7 @@
 									<include>com.squareup.okio:okio</include>
 								</includes>
 							</artifactSet>
+							<minimizeJar>true</minimizeJar>
 						</configuration>
 					</execution>
 				</executions>
