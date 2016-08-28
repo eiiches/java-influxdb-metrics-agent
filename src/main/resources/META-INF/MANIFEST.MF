@@ -1,0 +1,1 @@
+Premain-Class: net.thisptr.java.influxdb.metrics.agent.JvmAgent
