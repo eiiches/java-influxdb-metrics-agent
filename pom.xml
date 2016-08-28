@@ -5,7 +5,7 @@
 
 	<groupId>net.thisptr</groupId>
 	<artifactId>java-influxdb-metrics-agent</artifactId>
-	<name>java-influxdb-metrics-agent</name>
+	<name>InfluxDB Metrics Agent</name>
 	<packaging>jar</packaging>
 	<version>0.0.1-SNAPSHOT</version>
 	<description>Java agent for collecting and reporting metrics to InfluxDB</description>
