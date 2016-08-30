@@ -1,17 +1,23 @@
 package net.thisptr.java.influxdb.metrics.agent;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+
+import javax.management.ObjectName;
+
+import net.thisptr.java.influxdb.metrics.agent.parser.Configuration.ResolvedConfiguration;
+import net.thisptr.java.influxdb.metrics.agent.parser.ConfigurationException;
+import net.thisptr.java.influxdb.metrics.agent.parser.ConfigurationParser;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
 import com.google.common.net.HostAndPort;
 
 public class JvmAgentConfig {
@@ -30,35 +36,18 @@ public class JvmAgentConfig {
 	public Map<String, String> tags;
 	public String retention;
 
-	public static class ConfigurationException extends RuntimeException {
-		private static final long serialVersionUID = 1L;
+	private ResolvedConfiguration config;
 
-		public ConfigurationException() {
-			super();
-		}
-
-		public ConfigurationException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
-			super(message, cause, enableSuppression, writableStackTrace);
-		}
-
-		public ConfigurationException(String message, Throwable cause) {
-			super(message, cause);
-		}
-
-		public ConfigurationException(String message) {
-			super(message);
-		}
-
-		public ConfigurationException(Throwable cause) {
-			super(cause);
-		}
+	public static class MBeanConfig {
+		public boolean exclude;
+		public List<String> namekeys;
 	}
 
 	public static class Context {
 		private Map<String, String> values;
 
 		public Context(final Map<String, String> values) {
-			this.values = new HashMap<>(values);
+			this.values = new LinkedHashMap<>(values);
 		}
 
 		public String getString(final String key) {
@@ -75,7 +64,7 @@ public class JvmAgentConfig {
 		}
 
 		public Map<String, String> getSubProperties(final String key) {
-			final Map<String, String> result = new HashMap<>();
+			final Map<String, String> result = new LinkedHashMap<>();
 			values.forEach((k, v) -> {
 				if (k.startsWith(key))
 					result.put(k.substring(key.length()), v);
@@ -84,7 +73,44 @@ public class JvmAgentConfig {
 		}
 	}
 
-	public static JvmAgentConfig fromMap(final Map<String, String> values) {
+	public Map<String, String> getConfig() {
+		return config.properties;
+	}
+
+	public Map<String, String> getConfigForMetric(final ObjectName name, final String attribute) {
+		final Map<String, String> result = new HashMap<>();
+		config.matchers.forEach(matcher -> {
+			if (matcher.pattern.domain != null && !matcher.pattern.domain.equals(name.getDomain()))
+				return;
+
+			boolean match = true;
+			final Map<String, String> target = name.getKeyPropertyList();
+			for (final Map.Entry<String, String> patternEntry : matcher.pattern.keys.entrySet()) {
+				final String targetValue = target.get(patternEntry.getKey());
+				if (targetValue == null || !targetValue.equals(patternEntry.getValue())) {
+					match = false;
+					break;
+				}
+			}
+			if (!match)
+				return;
+
+			if (matcher.pattern.attribute != null && !matcher.pattern.attribute.equals(attribute))
+				return;
+
+			matcher.properties.forEach(property -> {
+				result.putIfAbsent(property.key, property.value);
+			});
+		});
+
+		// default
+		config.properties.forEach((k, v) -> {
+			result.putIfAbsent(k, v);
+		});
+		return result;
+	}
+
+	private static JvmAgentConfig fromMap(final Map<String, String> values) {
 		final Context context = new Context(values);
 
 		final String servers = context.getString("servers");
@@ -122,16 +148,10 @@ public class JvmAgentConfig {
 		return config;
 	}
 
-	public static JvmAgentConfig fromArgs(final String args) {
-		final Map<String, String> result = new HashMap<>();
-		for (final String arg : Splitter.on(",").trimResults().split(args)) {
-			final List<String> kv = Lists.newArrayList(Splitter.on("=").split(arg));
-			if (kv.size() != 2) {
-				LOG.info("invalid argment: {}", arg);
-				continue;
-			}
-			result.put(kv.get(0), kv.get(1));
-		}
-		return fromMap(result);
+	public static JvmAgentConfig fromString(final String str) {
+		final ResolvedConfiguration conf = ConfigurationParser.parse(str).resolve();
+		final JvmAgentConfig config = fromMap(conf.properties);
+		config.config = conf;
+		return config;
 	}
 }

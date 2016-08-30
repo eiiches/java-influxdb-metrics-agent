@@ -1,0 +1,462 @@
+options {
+	STATIC = false;
+	LOOKAHEAD = 1;
+	DEBUG_PARSER = false;
+	UNICODE_INPUT = true;
+	JDK_VERSION = "1.7";
+}
+
+
+PARSER_BEGIN(ConfigurationParser)
+	package net.thisptr.java.influxdb.metrics.agent.parser;
+
+	import java.io.StringReader;
+	import java.util.List;
+	import java.util.Map;
+	import java.util.Collections;
+	import java.util.HashMap;
+	import java.util.ArrayList;
+
+	public class ConfigurationParser {
+		public static Configuration parse(final String args) {
+			try {
+				final ConfigurationParser parser = new ConfigurationParser(new StringReader(args));
+				return parser.Start();
+			} catch (Throwable th) {
+				throw new ConfigurationException(th);
+			}
+		}
+	}
+PARSER_END(ConfigurationParser)
+
+
+TOKEN: { <SPACE_H: " " | "\t"> }
+TOKEN: { <SPACE_V: "\r" | "\n"> }
+
+SKIP: { <"//" (~["\r", "\n"])*> }
+
+
+/* = */
+
+TOKEN: {
+	<EQUAL: "=">
+	| <COMMA: ",">
+	| <IMPORT: "@">
+}
+
+TOKEN: {
+	<BRACE_L: "{">
+	| <BRACE_R: "}">
+}
+
+
+/* foo.10.bar */
+
+TOKEN: {
+	<FREE_VISIBLE_CHAR: ~["\\", "=", ",", "\"", "'", "[", "]", " ", "\r", "\n", "\t", "{", "}", "@"]>
+}
+
+MORE: {
+	"\\": STATE_ESCAPE
+}
+
+<STATE_ESCAPE> TOKEN: {
+	<FREE_ESCAPE_CHAR: ["\\", "=", ",", "\"", "'", "[", "]", " ", "b", "f", "r", "n", "t", "{", "}", "@"]> : DEFAULT
+}
+
+
+/* [java.lang:type=Class\,L\=oadi\]ng,name=fuga:hoge] */
+
+TOKEN: {
+	<MBEAN_PATTERN_LPAR: "["> : STATE_MBEAN_PATTERN
+}
+
+<STATE_MBEAN_PATTERN> TOKEN: {
+	<MBEAN_PATTERN_COLON: ":">
+	| <MBEAN_PATTERN_EQUAL: "=">
+	| <MBEAN_PATTERN_COMMA: ",">
+	| <MBEAN_PATTERN_RPAR: "]"> : DEFAULT
+	| <MBEAN_PATTERN_VISIBLE_CHAR: ~["\\", ":", "=", ",", "[", "]"]>
+}
+
+<STATE_MBEAN_PATTERN> MORE: {
+	"\\": STATE_MBEAN_PATTERN_ESCAPE
+}
+
+<STATE_MBEAN_PATTERN_ESCAPE> TOKEN: {
+	<MBEAN_PATTERN_ESCAPE_CHAR: ["\\", ":", "=", ",", "[", "]", "b", "f", "r", "n", "t"]> : STATE_MBEAN_PATTERN
+}
+
+
+/* "foo\"bar\\baz" */
+
+TOKEN: {
+	<DOUBLE_QUOTE: "\""> : STATE_DOUBLE_QUOTED_STRING
+}
+
+<STATE_DOUBLE_QUOTED_STRING> TOKEN: {
+	<DOUBLE_QUOTE_END: <DOUBLE_QUOTE>> : DEFAULT
+	| <DOUBLE_QUOTE_VISIBLE_CHAR:~["\\", "\""]>
+}
+
+<STATE_DOUBLE_QUOTED_STRING> MORE: {
+	"\\" : STATE_DOUBLE_QUOTED_STRING_ESCAPE
+}
+
+<STATE_DOUBLE_QUOTED_STRING_ESCAPE> TOKEN: {
+	<DOUBLE_QUOTE_ESCAPE_CHAR: ["\"", "\\", "b", "f", "r", "n", "t"]> : STATE_DOUBLE_QUOTED_STRING
+}
+
+
+/* 'foo\'bar\\baz' */
+
+TOKEN: {
+	<SINGLE_QUOTE: "'"> : STATE_SINGLE_QUOTED_STRING
+}
+
+<STATE_SINGLE_QUOTED_STRING> TOKEN: {
+	<SINGLE_QUOTE_END: <SINGLE_QUOTE>> : DEFAULT
+	| <SINGLE_QUOTE_VISIBLE_CHAR: ~["\\", "'"]>
+}
+
+<STATE_SINGLE_QUOTED_STRING> MORE: {
+	"\\" : STATE_SINGLE_QUOTED_STRING_ESCAPE
+}
+
+<STATE_SINGLE_QUOTED_STRING_ESCAPE> TOKEN: {
+	<SINGLE_QUOTE_ESCAPE_CHAR: ["'", "\\", "b", "f", "r", "n", "t"]> : STATE_SINGLE_QUOTED_STRING
+}
+
+
+Configuration Start():
+{
+	List<Configuration.Element> elements = Collections.emptyList();
+}
+{
+	(<SPACE_V>|<SPACE_H>)*
+	(
+		elements = ElementList()
+		(<SPACE_V>|<SPACE_H>)*
+	)?
+	<EOF>
+	{ return new Configuration(elements); }
+}
+
+List<Configuration.Property> PropertyList():
+{
+	Configuration.Property property;
+	final List<Configuration.Property> properties = new ArrayList<Configuration.Property>();
+}
+{
+	property = Property()
+	{ properties.add(property); }
+	(
+		LOOKAHEAD(2147483647)
+		(<SPACE_H>)*
+		(
+			LOOKAHEAD(2)
+			<COMMA>
+		|
+			(<COMMA>)?
+			<SPACE_V>
+		)
+		(<SPACE_H>|<SPACE_V>)*
+		property = Property()
+		{ properties.add(property); }
+	)*
+	{ return properties; }
+}
+
+List<Configuration.Element> ElementList():
+{
+	Configuration.Element element;
+	final List<Configuration.Element> elements = new ArrayList<Configuration.Element>();
+}
+{
+	element = Element()
+	{ elements.add(element); }
+	(
+		LOOKAHEAD(2147483647)
+		(<SPACE_H>)*
+		(
+			LOOKAHEAD(2)
+			<COMMA>
+		|
+			(<COMMA>)?
+			<SPACE_V>
+		)
+		(<SPACE_H>|<SPACE_V>)*
+		element = Element()
+		{ elements.add(element); }
+	)*
+	{ return elements; }
+}
+
+Configuration.Element Element():
+{
+	Configuration.Element element;
+}
+{
+	(
+		element = Property()
+	|
+		element = MatcherBlock()
+	|
+		element = Import()
+	)
+	{ return element; }
+}
+
+Configuration.Import Import():
+{
+	String path;
+}
+{
+	<IMPORT>
+	path = FreeString()
+	{ return new Configuration.Import(path); }
+}
+
+Configuration.Property Property():
+{
+	String k, v = "";
+}
+{
+	k = FreeString()
+	(<SPACE_H>)*
+	<EQUAL>
+	(
+		LOOKAHEAD(2147483647)
+		(<SPACE_H>)*
+		(
+			v = DoubleQuotedString()
+			|
+			v = FreeString()
+			|
+			v = SingleQuotedString()
+		)
+	)?
+	{ return new Configuration.Property(k, v); }
+}
+
+Configuration.MatcherBlock MatcherBlock():
+{
+	Configuration.MetricPattern pattern;
+	List<Configuration.Property> properties = Collections.emptyList();
+}
+{
+	pattern = MetricPattern()
+	(<SPACE_V>|<SPACE_H>)*
+	<BRACE_L>
+	(<SPACE_V>|<SPACE_H>)*
+	(
+		properties = PropertyList()
+		(<SPACE_V>|<SPACE_H>)*
+	)?
+	<BRACE_R>
+	{ return new Configuration.MatcherBlock(pattern, properties); }
+}
+
+Configuration.MetricPattern MetricPattern():
+{
+	String domain = null;
+	Map<String, String> keys = Collections.emptyMap();
+	String attribute = null;
+}
+{
+	<MBEAN_PATTERN_LPAR>
+	domain = MetricPatternString()
+	(
+		<MBEAN_PATTERN_COLON>
+		(
+			LOOKAHEAD(MetricPatternKeys() <MBEAN_PATTERN_COLON>)
+			keys = MetricPatternKeys()
+			<MBEAN_PATTERN_COLON>
+			attribute = MetricPatternString()
+		|
+			keys = MetricPatternKeys()
+		|
+			<MBEAN_PATTERN_COLON>
+			attribute = MetricPatternString()
+		)
+	)?
+	<MBEAN_PATTERN_RPAR>
+	{ return new Configuration.MetricPattern(domain, keys, attribute); }
+}
+
+Map<String, String> MetricPatternKeys():
+{
+	String k, v;
+	final Map<String, String> keys = new HashMap<String, String>();
+}
+{
+	(
+		k = MetricPatternString()
+		<MBEAN_PATTERN_EQUAL>
+		v = MetricPatternString()
+		{ keys.put(k, v); }
+	)
+	(
+		<MBEAN_PATTERN_COMMA>
+		(
+			k = MetricPatternString()
+			<MBEAN_PATTERN_EQUAL>
+			v = MetricPatternString()
+			{ keys.put(k, v); }
+		)
+	)*
+	{ return keys; }
+}
+
+String MetricPatternString():
+{
+	Token t;
+	final StringBuilder builder = new StringBuilder();
+}
+{
+	(
+		t = <MBEAN_PATTERN_VISIBLE_CHAR>
+		{ builder.append(t.image); }
+	|
+		t = <MBEAN_PATTERN_ESCAPE_CHAR>
+		{
+			if (t.image.charAt(0) != '\\')
+				throw new IllegalStateException("bug");
+			final char c = t.image.charAt(1);
+			switch (c)
+			{
+				case '\\':
+				case ':':
+				case '=':
+				case ',':
+				case '[':
+				case ']':
+					builder.append(c);
+					break;
+				case 'b': builder.append((char) 0x08); break;
+				case 'f': builder.append((char) 0x0c); break;
+				case 'r': builder.append((char) 0x0d); break;
+				case 't': builder.append((char) 0x09); break;
+				case 'n': builder.append((char) 0x0a); break;
+				default:
+					throw new IllegalStateException("bug: " + c);
+			}
+		}
+	)+
+	{ return builder.toString(); }
+}
+
+String DoubleQuotedString():
+{
+	Token t;
+	final StringBuilder builder = new StringBuilder();
+}
+{
+	<DOUBLE_QUOTE>
+	(
+		t = <DOUBLE_QUOTE_VISIBLE_CHAR>
+		{ builder.append(t.image); }
+	|
+		t = <DOUBLE_QUOTE_ESCAPE_CHAR>
+		{
+			if (t.image.charAt(0) != '\\')
+				throw new IllegalStateException("bug");
+			final char c = t.image.charAt(1);
+			switch (c)
+			{
+				case '\"':
+				case '\\':
+					builder.append(c);
+					break;
+				case 'b': builder.append((char) 0x08); break;
+				case 'f': builder.append((char) 0x0c); break;
+				case 'r': builder.append((char) 0x0d); break;
+				case 't': builder.append((char) 0x09); break;
+				case 'n': builder.append((char) 0x0a); break;
+				default:
+					throw new IllegalStateException("bug: " + c);
+			}
+		}
+	)*
+	<DOUBLE_QUOTE_END>
+	{ return builder.toString(); }
+}
+
+String SingleQuotedString():
+{
+	Token t;
+	final StringBuilder builder = new StringBuilder();
+}
+{
+	<SINGLE_QUOTE>
+	(
+		t = <SINGLE_QUOTE_VISIBLE_CHAR>
+		{ builder.append(t.image); }
+	|
+		t = <SINGLE_QUOTE_ESCAPE_CHAR>
+		{
+			if (t.image.charAt(0) != '\\')
+				throw new IllegalStateException("bug");
+			final char c = t.image.charAt(1);
+			switch (c)
+			{
+				case '\'':
+				case '\\':
+					builder.append(c);
+					break;
+				case 'b': builder.append((char) 0x08); break;
+				case 'f': builder.append((char) 0x0c); break;
+				case 'r': builder.append((char) 0x0d); break;
+				case 't': builder.append((char) 0x09); break;
+				case 'n': builder.append((char) 0x0a); break;
+				default:
+					throw new IllegalStateException("bug: " + c);
+			}
+		}
+	)*
+	<SINGLE_QUOTE_END>
+	{ return builder.toString(); }
+}
+
+String FreeString():
+{
+	Token t;
+	final StringBuilder builder = new StringBuilder();
+}
+{
+	(
+		t = <FREE_VISIBLE_CHAR>
+		{ builder.append(t.image); }
+	|
+		t = <FREE_ESCAPE_CHAR>
+		{
+			if (t.image.charAt(0) != '\\')
+				throw new IllegalStateException("bug");
+			final char c = t.image.charAt(1);
+			switch (c)
+			{
+				case '\"':
+				case '\'':
+				case '\\':
+				case '=':
+				case ',':
+				case '[':
+				case ']':
+				case '{':
+				case '}':
+				case '@':
+				case ' ':
+					builder.append(c);
+					break;
+				case 'b': builder.append((char) 0x08); break;
+				case 'f': builder.append((char) 0x0c); break;
+				case 'r': builder.append((char) 0x0d); break;
+				case 't': builder.append((char) 0x09); break;
+				case 'n': builder.append((char) 0x0a); break;
+				default:
+					throw new IllegalStateException("bug: " + c);
+			}
+		}
+	)+
+	{ return builder.toString(); }
+}

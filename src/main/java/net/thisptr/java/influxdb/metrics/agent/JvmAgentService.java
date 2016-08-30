@@ -47,7 +47,8 @@ public class JvmAgentService {
 				}
 			}
 			executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("InfluxDB Metrics Agent %d").setDaemon(true).build());
-			executor.scheduleWithFixedDelay(new JvmAgentCommand(conns, config.database, config.tags, config.retention), 0, config.interval, TimeUnit.SECONDS);
+			// FIXME: respect per metrics config
+			executor.scheduleWithFixedDelay(new JvmAgentCommand(conns, config), 0, config.interval, TimeUnit.SECONDS);
 			state.set(State.RUNNING);
 		} catch (final Throwable th) {
 			LOG.error("Failed to start InfluxDB Metrics Agent.", th);

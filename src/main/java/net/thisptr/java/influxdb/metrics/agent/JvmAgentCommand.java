@@ -1,6 +1,7 @@
 package net.thisptr.java.influxdb.metrics.agent;
 
 import java.lang.management.ManagementFactory;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -16,22 +17,20 @@ import org.influxdb.dto.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 
 public class JvmAgentCommand implements Runnable {
 	private static final Logger LOG = LoggerFactory.getLogger(JvmAgentCommand.class);
 	private static final MBeanServer MBEANS = ManagementFactory.getPlatformMBeanServer();
 
 	private final List<InfluxDB> conns;
-	private final String database;
-	private final Map<String, String> tags;
-	private final String retention;
+	private final JvmAgentConfig config;
 
-	public JvmAgentCommand(final List<InfluxDB> conns, final String database, final Map<String, String> tags, final String retention) {
+	public JvmAgentCommand(final List<InfluxDB> conns, final JvmAgentConfig config) {
 		this.conns = conns;
-		this.database = database;
-		this.tags = tags;
-		this.retention = retention;
+		this.config = config;
 	}
 
 	public static enum SupportedType {
@@ -140,15 +139,32 @@ public class JvmAgentCommand implements Runnable {
 		}
 	}
 
+	public static final String CONFIG_KEY_NAMEKEYS = "namekeys";
+	public static final String CONFIG_KEY_EXCLUDE = "exclude";
+
+	private static List<String> configNamekeys(final Map<String, String> config) {
+		final String namekeys = config.get(CONFIG_KEY_NAMEKEYS);
+		if (Strings.isNullOrEmpty(namekeys))
+			return Collections.emptyList();
+		return Lists.newArrayList(Splitter.on(",").trimResults().split(namekeys));
+	}
+
+	private static boolean configExclude(final Map<String, String> config) {
+		final String exclude = config.get(CONFIG_KEY_EXCLUDE);
+		if (Strings.isNullOrEmpty(exclude))
+			return false;
+		return Boolean.parseBoolean(exclude);
+	}
+
 	@Override
 	public void run() {
 		LOG.debug("Collecting metrics to InfluxDB...");
 		final long startTime = System.currentTimeMillis();
 		try {
-			final BatchPoints.Builder batchPoints = BatchPoints.database(database);
-			if (!Strings.isNullOrEmpty(retention))
-				batchPoints.retentionPolicy(retention);
-			tags.forEach((name, value) -> {
+			final BatchPoints.Builder batchPoints = BatchPoints.database(config.database);
+			if (!Strings.isNullOrEmpty(config.retention))
+				batchPoints.retentionPolicy(config.retention);
+			config.tags.forEach((name, value) -> {
 				if (Strings.isNullOrEmpty(value)) {
 					LOG.debug("Omitted a tag {}, as its value is empty.", name);
 					return;
@@ -159,15 +175,41 @@ public class JvmAgentCommand implements Runnable {
 
 			for (final ObjectInstance instance : MBEANS.queryMBeans(null, null)) {
 				final ObjectName oname = instance.getObjectName();
+				final Map<String, String> metricConfig = config.getConfigForMetric(oname, null);
+				if (configExclude(metricConfig))
+					continue;
 
-				final Point.Builder point = Point.measurement(oname.getDomain())
-						.tag(oname.getKeyPropertyList());
+				String sep = ":";
+				final StringBuilder measurementName = new StringBuilder(oname.getDomain());
+				final Map<String, String> measurementTags = oname.getKeyPropertyList();
+				for (final String measurementKey : configNamekeys(metricConfig)) {
+					final String value = measurementTags.remove(measurementKey);
+					if (value != null) {
+						measurementName.append(sep);
+						measurementName.append(measurementKey);
+						measurementName.append('=');
+						measurementName.append(value);
+					}
+					sep = ",";
+				}
+
+				final Point.Builder point = Point.measurement(measurementName.toString())
+						.tag(measurementTags);
 
 				int fields = 0;
 				for (final MBeanAttributeInfo attr : MBEANS.getMBeanInfo(oname).getAttributes()) {
-					final JvmAgentCommand.SupportedType type = SupportedType.find(attr.getType());
+					final Map<String, String> attrConfig = config.getConfigForMetric(oname, attr.getName());
+					if (configExclude(attrConfig))
+						continue;
+
+					final String typeName = attr.getType();
+					if (typeName == null) {
+						LOG.debug("Ignored null type attribute {} in {}", attr.getName(), oname);
+						continue;
+					}
+					final JvmAgentCommand.SupportedType type = SupportedType.find(typeName);
 					if (type == null) {
-						LOG.debug("Unsupported attribute type {} in {}", attr.getType(), oname);
+						LOG.debug("Ignored unsupported type attribute {} in {} (type = {})", attr.getName(), oname, attr.getType());
 						continue;
 					}
 
@@ -180,7 +222,12 @@ public class JvmAgentCommand implements Runnable {
 						LOG.debug("Failed to get value of the attribute " + attr.getName() + " in " + oname, e);
 						continue;
 					}
-					fields += type.action.add(point, attr.getName(), value);
+
+					try {
+						fields += type.action.add(point, attr.getName(), value);
+					} catch (Exception e) {
+						LOG.debug("Failed to process value of attribute " + attr.getName() + " in " + oname, e);
+					}
 				}
 
 				// Skip points with no field. InfluxDB cannot ingest such data.
@@ -193,9 +240,9 @@ public class JvmAgentCommand implements Runnable {
 
 			for (final InfluxDB conn : conns) {
 				try {
-					conn.createDatabase(database);
+					conn.createDatabase(config.database);
 				} catch (Exception e) {
-					LOG.warn("Failed to create a database " + database + " on {}.", conn, e);
+					LOG.warn("Failed to create a database " + config.database + " on {}.", conn, e);
 					continue;
 				}
 				try {
