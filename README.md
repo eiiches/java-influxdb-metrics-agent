@@ -21,7 +21,7 @@ curl -O 'http://central.maven.org/maven2/net/thisptr/java-influxdb-metrics-agent
 
 #### slf4j-api (required)
 
-Since the version of slf4j-api and its binding must match, slf4j-api is not included in the agent jar and must be provided at runtime. Usually, slf4j-api is already on your classpath (since many applications depends on it), but if it's not, you should download it from [the official site](http://www.slf4j.org/download.html).
+Since the version of slf4j-api and its binding must match, slf4j-api is not included in the agent jar and must be provided at runtime. Usually, slf4j-api is already on your classpath (because many applications depend on it), but if it's not, you have to download it from [the official site](http://www.slf4j.org/download.html).
 
 #### slf4j binding (recommended)
 
@@ -33,27 +33,121 @@ Usage
 Add `-javaagent` option to JVM arguments.
 
 ```
--javaagent:<PATH_TO_AGENT_JAR>=<CONF1>=<VALUE1>,<CONF2>=<VALUE2>...
+-javaagent:<PATH_TO_AGENT_JAR>=<CONF1>=<VALUE1>,...
 ```
 
 #### Example
 
+At least, `servers` and `database` must be specified.
+
 ```
--javaagent:/opt/java-influxdb-metrics-agent-0.0.1.jar=servers=influxdb.example.com,database=test,interval=10,tags.host=`hostname`
+-javaagent:/opt/java-influxdb-metrics-agent-0.0.1.jar=servers=influxdb.example.com,database=test
 ```
 
 Configuration
 -------------
 
-| Property Name | Default | Description |
+### Global options
+
+| Key | Default | Description |
 |---------------|---------|-------------|
-| **servers** | - | Comma-separated list `of hostname:port` of InfluxDB servers |
-| **database** | - | The name of the database to store metrics. The database is automatically created if not exists. |
-| interval | 30 | Time, in seconds, between consecutive reporting to InfluxDB server |
-| user | root | The user name to use when connecting to InfluxDB server |
-| password | root | The password to use when connecting to InfluxDB server |
-| tags.*&lt;key&gt;* | - | Additional tags to set on each measurements. For example, to add a `hostname` tag, configuration will look like `tags.hostname = foo.example.com` |
+| **servers** | - | Comma-separated list of `hostname:port` of InfluxDB servers. |
+| **database** | - | The name of the database to store metrics. The database is automatically created if it does not exist. |
+| interval | 30 | Time, in seconds, between consecutive reporting to InfluxDB servers. |
+| user | root | The user name to use when connecting to InfluxDB servers. |
+| password | root | The password to use when connecting to InfluxDB servers. |
+| tags.*&lt;key&gt;* | - | Additional tags to set on each measurements. For example, to add a `host` tag, configuration should be: `tags.host = foo.example.com` |
 | retention | - | The name of the RetentionPolicy to write metrics to. If not specified, `DEFAULT` policy is used. |
+
+### Metric-specific options
+
+Metric-specific options can be specified in `[METRIC_PATTERN] { <KEY1> = <VALUE1>, ... }` form.
+
+| Key | Default | Description |
+|------|---------|-------------|
+| namekeys | *&lt;empty&gt;*   | Comma-separated list of MBean key properties to append to measurement names. For example, `[java.lang]{namekeys=type}` will generate measurements such as `java.lang:type=MemoryPool` and `java.lang:type=GarbageCollector` instead of a single `java.lang` measurement containing mulitple series with different `type` tags. |
+| exclude | false | Exclude metrics from being sent to InfluxDB. |
+
+### Using configuration files
+
+To read configurations from `agent.conf`, add `@agent.conf` somewhere in `-javaagent` option.
+
+```sh
+-javaagent:/opt/java-influxdb-metrics-agent-0.0.1-SNAPSHOT.jar=tags.host=`hostname`,@agent.conf
+```
+
+Examples
+--------
+
+### Apache Flume
+
+```sh
+# FILE: flume-env.sh
+export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.1.jar=tags.host=`hostname`,@/opt/flume/agent.conf"
+```
+
+```javascript
+// FILE: agent.conf
+servers = influxdb.example.com
+database = myapp
+interval = 10
+namekeys = type
+
+// We don't need JMImplementation recorded in InfluxDB.
+[JMImplementation] {
+	exclude = true
+}
+
+[org.apache.flume.channel] {
+	// It's convenient to have these channel metrics in a single measurement,
+	// rather than separated into many unrelated measurements.
+	//  - org.apache.flume.channel:type=foo-ch
+	//  - org.apache.flume.channel:type=bar-ch
+	//  - org.apache.flume.channel:type=baz-ch
+	namekeys =
+}
+[org.apache.flume.sink] { namekeys = }
+[org.apache.flume.source] { namekeys = }
+```
+
+If you prefer, an equivalent configuration can be set without `agent.conf`:
+```sh
+export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.1.jar=tags.host=`hostname`,servers=influxdb.example.com,database=myapp,interval=10,namekeys=type,[JMImplementation]{exclude=true},[org.apache.flume.channel]{namekeys=},[org.apache.flume.sink]{namekeys},[org.apache.flume.source]{namekeys=}"
+```
+
+### Apache Tomcat 8
+
+```sh
+# FILE: setenv.sh
+export CATALINA_OPTS="-javaagent:/opt/java-influxdb-metrics-agent-0.0.1.jar=tags.host=`hostname`,@/opt/tomcat/agent.conf"
+
+# Tomcat does not have slf4j-api in SYSTEM classloader ( https://tomcat.apache.org/tomcat-8.0-doc/class-loader-howto.html ). Need to download manually.
+#  - curl -o /opt/tomcat/slf4j-api-1.7.21.jar http://central.maven.org/maven2/org/slf4j/slf4j-api/1.7.21/slf4j-api-1.7.21.jar
+#  - curl -o /opt/tomcat/slf4j-simple-1.7.21.jar http://central.maven.org/maven2/org/slf4j/slf4j-api/1.7.21/slf4j-simple-1.7.21.jar
+export CLASSPATH="/opt/tomcat/slf4j-api-1.7.21.jar:/opt/tomcat/slf4j-simple-1.7.21.jar"
+```
+
+```javascript
+// FILE: agent.conf
+servers = influxdb.example.com
+database = myapp
+interval = 10
+namekeys = type
+tags.env = production
+tags.role = web
+
+[JMImplementation] { exclude = true }
+[Users] { exclude = true }
+```
+
+### Dropwizard Metrics
+
+TBD
+
+TODO
+----
+
+ - Support wildcards/regex in `[METRIC_PATTERN]` expression.
 
 License
 -------
