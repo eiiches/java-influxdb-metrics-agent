@@ -1,7 +1,7 @@
 java-influxdb-metrics-agent
 ===========================
 
-Java agent for collecting and reporting metrics to InfluxDB
+Java agent for collecting and reporting JMX metrics to InfluxDB
 
 Installation
 ------------
