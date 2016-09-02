@@ -6,7 +6,7 @@
 	<artifactId>java-influxdb-metrics-agent</artifactId>
 	<name>InfluxDB Metrics Agent</name>
 	<packaging>jar</packaging>
-	<version>0.0.2</version>
+	<version>0.0.3</version>
 	<description>Java agent for collecting and reporting metrics to InfluxDB</description>
 	<url>https://github.com/eiiches/java-influxdb-metrics-agent</url>
 
@@ -29,7 +29,7 @@
 		<connection>scm:git:git@github.com:eiiches/java-influxdb-metrics-agent.git</connection>
 		<developerConnection>scm:git:git@github.com:eiiches/java-influxdb-metrics-agent.git</developerConnection>
 		<url>git@github.com:eiiches/java-influxdb-metrics-agent.git</url>
-		<tag>java-influxdb-metrics-agent-0.0.2</tag>
+		<tag>java-influxdb-metrics-agent-0.0.3</tag>
 	</scm>
 
 	<distributionManagement>

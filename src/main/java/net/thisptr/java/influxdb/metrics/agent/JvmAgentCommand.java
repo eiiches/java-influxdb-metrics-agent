@@ -4,6 +4,7 @@ import java.lang.management.ManagementFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanServer;
@@ -27,10 +28,12 @@ public class JvmAgentCommand implements Runnable {
 
 	private final List<InfluxDB> conns;
 	private final JvmAgentConfig config;
+	private final long timestamp;
 
-	public JvmAgentCommand(final List<InfluxDB> conns, final JvmAgentConfig config) {
+	public JvmAgentCommand(final List<InfluxDB> conns, final JvmAgentConfig config, final long timestamp) {
 		this.conns = conns;
 		this.config = config;
+		this.timestamp = timestamp;
 	}
 
 	public static enum SupportedType {
@@ -194,6 +197,7 @@ public class JvmAgentCommand implements Runnable {
 				}
 
 				final Point.Builder point = Point.measurement(measurementName.toString())
+						.time(timestamp, TimeUnit.MILLISECONDS)
 						.tag(measurementTags);
 
 				int fields = 0;
