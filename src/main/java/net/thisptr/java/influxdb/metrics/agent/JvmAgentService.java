@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.influxdb.InfluxDB;
@@ -26,6 +27,7 @@ public class JvmAgentService {
 	}
 
 	private final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
+	private final AtomicLong epoch = new AtomicLong(0);
 
 	public JvmAgentService(final JvmAgentConfig config) {
 		this.config = config;
@@ -46,9 +48,21 @@ public class JvmAgentService {
 					LOG.warn("Failed to connect to InfluxDB server {}.", server, e);
 				}
 			}
+
 			executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("InfluxDB Metrics Agent %d").setDaemon(true).build());
-			// FIXME: respect per metrics config
-			executor.scheduleWithFixedDelay(new JvmAgentCommand(conns, config), 0, config.interval, TimeUnit.SECONDS);
+			executor.scheduleWithFixedDelay(() -> {
+				final long epoch0 = epoch.get();
+				final long epoch1 = System.currentTimeMillis() / (config.interval * 1000L);
+				if (epoch0 == epoch1)
+					return;
+
+				if (epoch0 != 0 && epoch1 - epoch0 != 1)
+					LOG.warn("Collecting and reporting metrics took too long. Skipped {} data points.", epoch1 - epoch0 - 1);
+
+				epoch.set(epoch1);
+				new JvmAgentCommand(conns, config, epoch1 * (config.interval * 1000L)).run();
+			}, 0, 100, TimeUnit.MILLISECONDS);
+
 			state.set(State.RUNNING);
 		} catch (final Throwable th) {
 			LOG.error("Failed to start InfluxDB Metrics Agent.", th);
