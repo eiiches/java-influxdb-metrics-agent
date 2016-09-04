@@ -52,7 +52,7 @@ Configuration
 | Key | Default | Description |
 |---------------|---------|-------------|
 | **servers** | - | Comma-separated list of `hostname:port` of InfluxDB servers. |
-| **database** | - | The name of the database to store metrics. The database is automatically created if it does not exist. |
+| **database** | - | The name of the database to store metrics to. The database is automatically created if it does not exist. Currently, only accepts *unquoted identifier* described in the [spec](https://docs.influxdata.com/influxdb/v0.13/query_language/spec/#identifiers) (i.e. no hyphens, etc.). |
 | interval | 30 | Time, in seconds, between consecutive reporting to InfluxDB servers. |
 | user | root | The user name to use when connecting to InfluxDB servers. |
 | password | root | The password to use when connecting to InfluxDB servers. |
