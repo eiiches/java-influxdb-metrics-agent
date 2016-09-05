@@ -26,6 +26,44 @@ PARSER_BEGIN(ConfigurationParser)
 				throw new ConfigurationException(th);
 			}
 		}
+
+		private static String unescape(final String image) {
+			final StringBuilder builder = new StringBuilder();
+			int i = 0;
+			while (i < image.length()) {
+				char c = image.charAt(i);
+				if (c != '\\') {
+					builder.append(c);
+					i += 1;
+					continue;
+				}
+				// escape char
+				c = image.charAt(i + 1);
+				switch (c) {
+					case '\"':
+					case '\'':
+					case '\\':
+					case '=':
+					case ',':
+					case '/':
+					case '{':
+					case '}':
+					case '@':
+					case ' ':
+						builder.append(c);
+						break;
+					case 'b': builder.append((char) 0x08); break;
+					case 'f': builder.append((char) 0x0c); break;
+					case 'r': builder.append((char) 0x0d); break;
+					case 't': builder.append((char) 0x09); break;
+					case 'n': builder.append((char) 0x0a); break;
+					default:
+						throw new IllegalStateException("bug: " + c);
+				}
+				i += 2;
+			}
+			return builder.toString();
+		}
 	}
 PARSER_END(ConfigurationParser)
 
@@ -41,7 +79,6 @@ SKIP: { <"//" (~["\r", "\n"])*> }
 TOKEN: {
 	<EQUAL: "=">
 	| <COMMA: ",">
-	| <IMPORT: "@">
 }
 
 TOKEN: {
@@ -53,30 +90,38 @@ TOKEN: {
 /* foo.10.bar */
 
 TOKEN: {
-	<FREE_VISIBLE_CHAR: ~["\\", "=", ",", "\"", "'", "[", "]", " ", "\r", "\n", "\t", "{", "}", "@"]>
+	<#FREE_ESCAPE_CHAR:     "\\" ["\\", "=", ",", "\"", "'", "/", " ", "b", "f",  "r",  "n",  "t", "{", "}", "@"]>
+	| <#FREE_VISIBLE_CHAR_TAIL: ~["\\", "=", ",", "\"", "'",      " ",           "\r", "\n", "\t", "{", "}"     ]>
+	| <#FREE_VISIBLE_CHAR_HEAD: ~["\\", "=", ",", "\"", "'", "/", " ",           "\r", "\n", "\t", "{", "}", "@"]>
 }
 
-MORE: {
-	"\\": STATE_ESCAPE
+TOKEN: {
+	<FREE_STRING: (<FREE_VISIBLE_CHAR_HEAD>|<FREE_ESCAPE_CHAR>) (<FREE_VISIBLE_CHAR_TAIL>|<FREE_ESCAPE_CHAR>)*>
 }
 
-<STATE_ESCAPE> TOKEN: {
-	<FREE_ESCAPE_CHAR: ["\\", "=", ",", "\"", "'", "[", "]", " ", "b", "f", "r", "n", "t", "{", "}", "@"]> : DEFAULT
+
+/* @/opt/influxdb.conf */
+
+TOKEN: {
+	<IMPORT: "@"> : STATE_IMPORT_PATH
 }
 
+<STATE_IMPORT_PATH> TOKEN: {
+	<IMPORT_PATH: (<FREE_VISIBLE_CHAR_TAIL>|<FREE_ESCAPE_CHAR>)+> : DEFAULT
+}
 
 /* [java.lang:type=Class\,L\=oadi\]ng,name=fuga:hoge] */
 
 TOKEN: {
-	<MBEAN_PATTERN_LPAR: "["> : STATE_MBEAN_PATTERN
+	<MBEAN_PATTERN_LPAR: "/"> : STATE_MBEAN_PATTERN
 }
 
 <STATE_MBEAN_PATTERN> TOKEN: {
 	<MBEAN_PATTERN_COLON: ":">
 	| <MBEAN_PATTERN_EQUAL: "=">
 	| <MBEAN_PATTERN_COMMA: ",">
-	| <MBEAN_PATTERN_RPAR: "]"> : DEFAULT
-	| <MBEAN_PATTERN_VISIBLE_CHAR: ~["\\", ":", "=", ",", "[", "]"]>
+	| <MBEAN_PATTERN_RPAR: <MBEAN_PATTERN_LPAR>> : DEFAULT
+	| <MBEAN_PATTERN_VISIBLE_CHAR: ~["\\", ":", "=", ",", "/"]>
 }
 
 <STATE_MBEAN_PATTERN> MORE: {
@@ -84,9 +129,8 @@ TOKEN: {
 }
 
 <STATE_MBEAN_PATTERN_ESCAPE> TOKEN: {
-	<MBEAN_PATTERN_ESCAPE_CHAR: ["\\", ":", "=", ",", "[", "]", "b", "f", "r", "n", "t"]> : STATE_MBEAN_PATTERN
+	<MBEAN_PATTERN_ESCAPE_CHAR: ["\\", ":", "=", ",", "/", "b", "f", "r", "n", "t"]> : STATE_MBEAN_PATTERN
 }
-
 
 /* "foo\"bar\\baz" */
 
@@ -209,12 +253,13 @@ Configuration.Element Element():
 
 Configuration.Import Import():
 {
+	Token t;
 	String path;
 }
 {
 	<IMPORT>
-	path = FreeString()
-	{ return new Configuration.Import(path); }
+	t = <IMPORT_PATH>
+	{ return new Configuration.Import(unescape(t.image)); }
 }
 
 Configuration.Property Property():
@@ -329,8 +374,7 @@ String MetricPatternString():
 				case ':':
 				case '=':
 				case ',':
-				case '[':
-				case ']':
+				case '/':
 					builder.append(c);
 					break;
 				case 'b': builder.append((char) 0x08); break;
@@ -421,42 +465,8 @@ String SingleQuotedString():
 String FreeString():
 {
 	Token t;
-	final StringBuilder builder = new StringBuilder();
 }
 {
-	(
-		t = <FREE_VISIBLE_CHAR>
-		{ builder.append(t.image); }
-	|
-		t = <FREE_ESCAPE_CHAR>
-		{
-			if (t.image.charAt(0) != '\\')
-				throw new IllegalStateException("bug");
-			final char c = t.image.charAt(1);
-			switch (c)
-			{
-				case '\"':
-				case '\'':
-				case '\\':
-				case '=':
-				case ',':
-				case '[':
-				case ']':
-				case '{':
-				case '}':
-				case '@':
-				case ' ':
-					builder.append(c);
-					break;
-				case 'b': builder.append((char) 0x08); break;
-				case 'f': builder.append((char) 0x0c); break;
-				case 'r': builder.append((char) 0x0d); break;
-				case 't': builder.append((char) 0x09); break;
-				case 'n': builder.append((char) 0x0a); break;
-				default:
-					throw new IllegalStateException("bug: " + c);
-			}
-		}
-	)+
-	{ return builder.toString(); }
+	t = <FREE_STRING>
+	{ return unescape(t.image); }
 }

@@ -61,11 +61,11 @@ Configuration
 
 ### Metric-specific options
 
-Metric-specific options can be specified in `[METRIC_PATTERN] { <KEY1> = <VALUE1>, ... }` form.
+Metric-specific options can be specified in `/MBEAN_REGEX/ { <KEY1> = <VALUE1>, ... }` form.
 
 | Key | Default | Description |
 |------|---------|-------------|
-| namekeys | *&lt;empty&gt;*   | Comma-separated list of MBean key properties to append to measurement names. For example, `[java.lang]{namekeys=type}` will generate measurements such as `java.lang:type=MemoryPool` and `java.lang:type=GarbageCollector` instead of a single `java.lang` measurement containing mulitple series with different `type` tags. |
+| namekeys | *&lt;empty&gt;*   | Comma-separated list of MBean key properties to append to measurement names. For example, `/java.lang/{namekeys=type}` will generate measurements such as `java.lang:type=MemoryPool` and `java.lang:type=GarbageCollector` instead of a single `java.lang` measurement containing mulitple series with different `type` tags. |
 | exclude | false | Exclude metrics from being sent to InfluxDB. |
 
 ### Using configuration files
@@ -86,7 +86,7 @@ Examples
 export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.3.jar=tags.host=`hostname`,@/opt/flume/agent.conf"
 ```
 
-```javascript
+```cs
 // FILE: agent.conf
 servers = influxdb.example.com
 database = myapp
@@ -94,11 +94,11 @@ interval = 10
 namekeys = type
 
 // We don't need JMImplementation recorded in InfluxDB.
-[JMImplementation] {
+/JMImplementation/ {
 	exclude = true
 }
 
-[org.apache.flume.channel] {
+/org.apache.flume.*/ {
 	// It's convenient to have these channel metrics in a single measurement,
 	// rather than separated into many unrelated measurements.
 	//  - org.apache.flume.channel:type=foo-ch
@@ -106,13 +106,11 @@ namekeys = type
 	//  - org.apache.flume.channel:type=baz-ch
 	namekeys =
 }
-[org.apache.flume.sink] { namekeys = }
-[org.apache.flume.source] { namekeys = }
 ```
 
 If you prefer, an equivalent configuration can be set without `agent.conf`:
 ```sh
-export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.3.jar=tags.host=`hostname`,servers=influxdb.example.com,database=myapp,interval=10,namekeys=type,[JMImplementation]{exclude=true},[org.apache.flume.channel]{namekeys=},[org.apache.flume.sink]{namekeys},[org.apache.flume.source]{namekeys=}"
+export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.3.jar=tags.host=`hostname`,servers=influxdb.example.com,database=myapp,interval=10,namekeys=type,/JMImplementation/{exclude=true},/org.apache.flume.*/{namekeys=}"
 ```
 
 ### Apache Tomcat 8
@@ -127,7 +125,7 @@ export CATALINA_OPTS="-javaagent:/opt/java-influxdb-metrics-agent-0.0.3.jar=tags
 export CLASSPATH="/opt/tomcat/slf4j-api-1.7.21.jar:/opt/tomcat/slf4j-simple-1.7.21.jar"
 ```
 
-```javascript
+```cs
 // FILE: agent.conf
 servers = influxdb.example.com
 database = myapp
@@ -136,18 +134,15 @@ namekeys = type
 tags.env = production
 tags.role = web
 
-[JMImplementation] { exclude = true }
-[Users] { exclude = true }
+/JMImplementation/ { exclude = true }
+/Users/ { exclude = true }
 ```
 
 ### Dropwizard Metrics
 
-TBD
-
-TODO
-----
-
- - Support wildcards/regex in `[METRIC_PATTERN]` expression.
+```cs
+/metrics/ { namekeys = name }
+```
 
 License
 -------

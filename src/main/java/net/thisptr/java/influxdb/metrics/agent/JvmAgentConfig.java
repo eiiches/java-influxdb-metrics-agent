@@ -38,11 +38,6 @@ public class JvmAgentConfig {
 
 	private ResolvedConfiguration config;
 
-	public static class MBeanConfig {
-		public boolean exclude;
-		public List<String> namekeys;
-	}
-
 	public static class Context {
 		private Map<String, String> values;
 
@@ -80,29 +75,12 @@ public class JvmAgentConfig {
 	public Map<String, String> getConfigForMetric(final ObjectName name, final String attribute) {
 		final Map<String, String> result = new HashMap<>();
 		config.matchers.forEach(matcher -> {
-			if (matcher.pattern.domain != null && !matcher.pattern.domain.equals(name.getDomain()))
+			if (!matcher.pattern.matches(name, attribute))
 				return;
-
-			boolean match = true;
-			final Map<String, String> target = name.getKeyPropertyList();
-			for (final Map.Entry<String, String> patternEntry : matcher.pattern.keys.entrySet()) {
-				final String targetValue = target.get(patternEntry.getKey());
-				if (targetValue == null || !targetValue.equals(patternEntry.getValue())) {
-					match = false;
-					break;
-				}
-			}
-			if (!match)
-				return;
-
-			if (matcher.pattern.attribute != null && !matcher.pattern.attribute.equals(attribute))
-				return;
-
 			matcher.properties.forEach(property -> {
 				result.putIfAbsent(property.key, property.value);
 			});
 		});
-
 		// default
 		config.properties.forEach((k, v) -> {
 			result.putIfAbsent(k, v);
