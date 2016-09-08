@@ -51,7 +51,7 @@ public class Configuration {
 					return false;
 			}
 
-			if (this.attribute != null && !this.attribute.matcher(attribute).matches())
+			if (this.attribute != null && (attribute == null || !this.attribute.matcher(attribute).matches()))
 				return false;
 
 			return true;
