@@ -12,6 +12,8 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 
+import net.thisptr.java.influxdb.metrics.agent.template.TemplateRenderer;
+
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.BatchPoints;
 import org.influxdb.dto.Point;
@@ -29,11 +31,13 @@ public class JvmAgentCommand implements Runnable {
 	private final List<InfluxDB> conns;
 	private final JvmAgentConfig config;
 	private final long timestamp;
+	private final TemplateRenderer renderer;
 
 	public JvmAgentCommand(final List<InfluxDB> conns, final JvmAgentConfig config, final long timestamp) {
 		this.conns = conns;
 		this.config = config;
 		this.timestamp = timestamp;
+		this.renderer = new TemplateRenderer();
 	}
 
 	public static enum SupportedType {
@@ -168,6 +172,7 @@ public class JvmAgentCommand implements Runnable {
 			if (!Strings.isNullOrEmpty(config.retention))
 				batchPoints.retentionPolicy(config.retention);
 			config.tags.forEach((name, value) -> {
+				value = renderer.render(value);
 				if (Strings.isNullOrEmpty(value)) {
 					LOG.debug("Omitted a tag {}, as its value is empty.", name);
 					return;

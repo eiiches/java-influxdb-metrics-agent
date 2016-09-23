@@ -14,7 +14,7 @@ Installation
 #### Download from Maven Central
 
 ```sh
-curl -O 'http://central.maven.org/maven2/net/thisptr/java-influxdb-metrics-agent/0.0.3/java-influxdb-metrics-agent-0.0.3.jar'
+curl -O 'http://central.maven.org/maven2/net/thisptr/java-influxdb-metrics-agent/0.0.4/java-influxdb-metrics-agent-0.0.4.jar'
 ```
 
 ### Runtime dependencies
@@ -41,7 +41,7 @@ Add `-javaagent` option to JVM arguments.
 At least, `servers` and `database` must be specified.
 
 ```
--javaagent:/opt/java-influxdb-metrics-agent-0.0.3.jar=servers=influxdb.example.com,database=test
+-javaagent:/opt/java-influxdb-metrics-agent-0.0.4.jar=servers=influxdb.example.com,database=test
 ```
 
 Configuration
@@ -52,7 +52,7 @@ Configuration
 | Key | Default | Description |
 |---------------|---------|-------------|
 | **servers** | - | Comma-separated list of `hostname:port` of InfluxDB servers. |
-| **database** | - | The name of the database to store metrics. The database is automatically created if it does not exist. |
+| **database** | - | The name of the database to store metrics to. The database is automatically created if it does not exist. Currently, only accepts *unquoted identifier* described in the [spec](https://docs.influxdata.com/influxdb/v0.13/query_language/spec/#identifiers) (i.e. no hyphens, etc.). |
 | interval | 30 | Time, in seconds, between consecutive reporting to InfluxDB servers. |
 | user | root | The user name to use when connecting to InfluxDB servers. |
 | password | root | The password to use when connecting to InfluxDB servers. |
@@ -61,11 +61,11 @@ Configuration
 
 ### Metric-specific options
 
-Metric-specific options can be specified in `[METRIC_PATTERN] { <KEY1> = <VALUE1>, ... }` form.
+Metric-specific options can be specified in `/MBEAN_REGEX/ { <KEY1> = <VALUE1>, ... }` form.
 
 | Key | Default | Description |
 |------|---------|-------------|
-| namekeys | *&lt;empty&gt;*   | Comma-separated list of MBean key properties to append to measurement names. For example, `[java.lang]{namekeys=type}` will generate measurements such as `java.lang:type=MemoryPool` and `java.lang:type=GarbageCollector` instead of a single `java.lang` measurement containing mulitple series with different `type` tags. |
+| namekeys | *&lt;empty&gt;*   | Comma-separated list of MBean key properties to append to measurement names. For example, `/java.lang/{namekeys=type}` will generate measurements such as `java.lang:type=MemoryPool` and `java.lang:type=GarbageCollector` instead of a single `java.lang` measurement containing mulitple series with different `type` tags. |
 | exclude | false | Exclude metrics from being sent to InfluxDB. |
 
 ### Using configuration files
@@ -73,7 +73,7 @@ Metric-specific options can be specified in `[METRIC_PATTERN] { <KEY1> = <VALUE1
 To read configurations from `agent.conf`, add `@agent.conf` somewhere in `-javaagent` option.
 
 ```sh
--javaagent:/opt/java-influxdb-metrics-agent-0.0.3.jar=tags.host=`hostname`,@agent.conf
+-javaagent:/opt/java-influxdb-metrics-agent-0.0.4.jar=tags.host=`hostname`,@agent.conf
 ```
 
 Examples
@@ -83,10 +83,10 @@ Examples
 
 ```sh
 # FILE: flume-env.sh
-export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.3.jar=tags.host=`hostname`,@/opt/flume/agent.conf"
+export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.4.jar=tags.host=`hostname`,@/opt/flume/agent.conf"
 ```
 
-```javascript
+```cs
 // FILE: agent.conf
 servers = influxdb.example.com
 database = myapp
@@ -94,11 +94,11 @@ interval = 10
 namekeys = type
 
 // We don't need JMImplementation recorded in InfluxDB.
-[JMImplementation] {
+/JMImplementation/ {
 	exclude = true
 }
 
-[org.apache.flume.channel] {
+/org.apache.flume.*/ {
 	// It's convenient to have these channel metrics in a single measurement,
 	// rather than separated into many unrelated measurements.
 	//  - org.apache.flume.channel:type=foo-ch
@@ -106,20 +106,18 @@ namekeys = type
 	//  - org.apache.flume.channel:type=baz-ch
 	namekeys =
 }
-[org.apache.flume.sink] { namekeys = }
-[org.apache.flume.source] { namekeys = }
 ```
 
 If you prefer, an equivalent configuration can be set without `agent.conf`:
 ```sh
-export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.3.jar=tags.host=`hostname`,servers=influxdb.example.com,database=myapp,interval=10,namekeys=type,[JMImplementation]{exclude=true},[org.apache.flume.channel]{namekeys=},[org.apache.flume.sink]{namekeys},[org.apache.flume.source]{namekeys=}"
+export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.4.jar=tags.host=`hostname`,servers=influxdb.example.com,database=myapp,interval=10,namekeys=type,/JMImplementation/{exclude=true},/org.apache.flume.*/{namekeys=}"
 ```
 
 ### Apache Tomcat 8
 
 ```sh
 # FILE: setenv.sh
-export CATALINA_OPTS="-javaagent:/opt/java-influxdb-metrics-agent-0.0.3.jar=tags.host=`hostname`,@/opt/tomcat/agent.conf"
+export CATALINA_OPTS="-javaagent:/opt/java-influxdb-metrics-agent-0.0.4.jar=tags.host=`hostname`,@/opt/tomcat/agent.conf"
 
 # Tomcat does not have slf4j-api in SYSTEM classloader ( https://tomcat.apache.org/tomcat-8.0-doc/class-loader-howto.html ). Need to download manually.
 #  - curl -o /opt/tomcat/slf4j-api-1.7.21.jar http://central.maven.org/maven2/org/slf4j/slf4j-api/1.7.21/slf4j-api-1.7.21.jar
@@ -127,7 +125,7 @@ export CATALINA_OPTS="-javaagent:/opt/java-influxdb-metrics-agent-0.0.3.jar=tags
 export CLASSPATH="/opt/tomcat/slf4j-api-1.7.21.jar:/opt/tomcat/slf4j-simple-1.7.21.jar"
 ```
 
-```javascript
+```cs
 // FILE: agent.conf
 servers = influxdb.example.com
 database = myapp
@@ -136,18 +134,58 @@ namekeys = type
 tags.env = production
 tags.role = web
 
-[JMImplementation] { exclude = true }
-[Users] { exclude = true }
+/JMImplementation/ { exclude = true }
+/Users/ { exclude = true }
 ```
 
 ### Dropwizard Metrics
 
-TBD
+[Dropwizard Metrics](http://metrics.dropwizard.io/3.1.0/) is a Java library for measuring and publishing application metrics.
+Because MBeans exposed by Metrics does not have a `type=` key property even through the MBeans sometimes differ in its attribute types, we have to separate measurements using a `name=` key property when storing into InfluxDB.
 
-TODO
-----
+```cs
+/metrics/ { namekeys = name }
+```
 
- - Support wildcards/regex in `[METRIC_PATTERN]` expression.
+### Apache HBase
+
+```sh
+# FILE: hbase-env.sh
+export HBASE_JMX_BASE="-javaagent:/opt/java-influxdb-metrics-agent-0.0.4.jar=servers=localhost,tags.host=`hostname`,tags.active='\${jmx|Hadoop:service=HBase,name=Master,sub=Server:tag.isActiveMaster}',database=hbase,interval=10,namekeys=type,/JMImplementation/{exclude=true},/Hadoop/{namekeys='service,name,sub'},/Hadoop::tag\\\\..+/{exclude=true} -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
+export HBASE_MASTER_OPTS="$HBASE_MASTER_OPTS $HBASE_JMX_BASE -Dcom.sun.management.jmxremote.port=10101"
+export HBASE_REGIONSERVER_OPTS="$HBASE_REGIONSERVER_OPTS $HBASE_JMX_BASE -Dcom.sun.management.jmxremote.port=10102"
+```
+
+```cs
+// FILE: agent.conf
+servers = localhost
+database = hbase
+interval = 10
+namekeys = type
+
+tags.host = "${sh|hostname}"
+// Set 'active' tag based on HMaster is active or not.
+tags.active = "${jmx|Hadoop:service=HBase,name=Master,sub=Server:tag.isActiveMaster}"
+
+/JMImplementation/ {
+	// Remove JMImplementation.
+	exclude = true
+}
+
+/Hadoop/ {
+	// Value contains commas, so we need quotes.
+	namekeys = 'service,name,sub'
+}
+/Hadoop::tag\\..+/ {
+	// Exclude MBean attributes with "tag." prefix in "Hadoop" domain.
+	exclude = true
+}
+```
+
+References
+----------
+
+ - [Java Management Extensions (JMX) - Best Practices](http://www.oracle.com/technetwork/articles/java/best-practices-jsp-136021.html)
 
 License
 -------
