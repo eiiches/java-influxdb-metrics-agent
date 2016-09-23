@@ -140,9 +140,52 @@ tags.role = web
 
 ### Dropwizard Metrics
 
+[Dropwizard Metrics](http://metrics.dropwizard.io/3.1.0/) is a Java library for measuring and publishing application metrics.
+Because MBeans exposed by Metrics does not have a `type=` key property even through the MBeans sometimes differ in its attribute types, we have to separate measurements using a `name=` key property when storing into InfluxDB.
+
 ```cs
 /metrics/ { namekeys = name }
 ```
+
+### Apache HBase
+
+```sh
+# FILE: hbase-env.sh
+export HBASE_JMX_BASE="-javaagent:/opt/java-influxdb-metrics-agent-0.0.3.jar=servers=localhost,tags.host=`hostname`,tags.active='\${jmx|Hadoop:service=HBase,name=Master,sub=Server:tag.isActiveMaster}',database=hbase,interval=10,namekeys=type,/JMImplementation/{exclude=true},/Hadoop/{namekeys='service,name,sub'},/Hadoop::tag\\\\..+/{exclude=true} -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
+export HBASE_MASTER_OPTS="$HBASE_MASTER_OPTS $HBASE_JMX_BASE -Dcom.sun.management.jmxremote.port=10101"
+export HBASE_REGIONSERVER_OPTS="$HBASE_REGIONSERVER_OPTS $HBASE_JMX_BASE -Dcom.sun.management.jmxremote.port=10102"
+```
+
+```cs
+// FILE: agent.conf
+servers = localhost
+database = hbase
+interval = 10
+namekeys = type
+
+tags.host = "${sh|hostname}"
+// Set 'active' tag based on HMaster is active or not.
+tags.active = "${jmx|Hadoop:service=HBase,name=Master,sub=Server:tag.isActiveMaster}"
+
+/JMImplementation/ {
+	// Remove JMImplementation.
+	exclude = true
+}
+
+/Hadoop/ {
+	// Value contains commas, so we need quotes.
+	namekeys = 'service,name,sub'
+}
+/Hadoop::tag\\..+/ {
+	// Exclude MBean attributes with "tag." prefix in "Hadoop" domain.
+	exclude = true
+}
+```
+
+References
+----------
+
+ - [Java Management Extensions (JMX) - Best Practices](http://www.oracle.com/technetwork/articles/java/best-practices-jsp-136021.html)
 
 License
 -------
