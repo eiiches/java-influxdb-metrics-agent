@@ -50,23 +50,15 @@
 			<version>2.2</version>
 		</dependency>
 		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>1.7.21</version>
-			<!-- since the version of slf4j-api and its bindings must match, let users choose their slf4j-api version -->
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.12</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-simple</artifactId>
-			<version>1.7.21</version>
-			<scope>test</scope>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>1.1.8</version>
 		</dependency>
 	</dependencies>
 
@@ -86,31 +78,39 @@
 							<relocations>
 								<relocation>
 									<pattern>com.google.common</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.com.google.common</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.com.google.common</shadedPattern>
 								</relocation>
 								<relocation>
 									<pattern>com.google.thirdparty</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.com.google.thirdparty</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.com.google.thirdparty</shadedPattern>
 								</relocation>
 								<relocation>
 									<pattern>com.google.gson</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.com.google.gson</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.com.google.gson</shadedPattern>
 								</relocation>
 								<relocation>
 									<pattern>org.influxdb</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.org.influxdb</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.org.influxdb</shadedPattern>
 								</relocation>
 								<relocation>
 									<pattern>okio</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.okio</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.okio</shadedPattern>
 								</relocation>
 								<relocation>
 									<pattern>com.squareup.okhttp</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.com.squareup.okhttp</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.com.squareup.okhttp</shadedPattern>
 								</relocation>
 								<relocation>
 									<pattern>retrofit</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.retrofit</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.retrofit</shadedPattern>
+								</relocation>
+								<relocation>
+									<pattern>ch.qos.logback</pattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.ch.qos.logback</shadedPattern>
+								</relocation>
+								<relocation>
+									<pattern>org.slf4j</pattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.org.slf4j</shadedPattern>
 								</relocation>
 							</relocations>
 							<artifactSet>
@@ -121,6 +121,9 @@
 									<include>com.squareup.retrofit</include>
 									<include>com.squareup.okhttp</include>
 									<include>com.squareup.okio:okio</include>
+									<include>org.slf4j:slf4j-api</include>
+									<include>ch.qos.logback:logback-core</include>
+									<include>ch.qos.logback:logback-classic</include>
 								</includes>
 							</artifactSet>
 							<minimizeJar>true</minimizeJar>

@@ -12,17 +12,16 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 
-import net.thisptr.java.influxdb.metrics.agent.template.TemplateRenderer;
-
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.BatchPoints;
 import org.influxdb.dto.Point;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+
+import net.thisptr.java.influxdb.metrics.agent.template.TemplateRenderer;
 
 public class JvmAgentCommand implements Runnable {
 	private static final Logger LOG = LoggerFactory.getLogger(JvmAgentCommand.class);
