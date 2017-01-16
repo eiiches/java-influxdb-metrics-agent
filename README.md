@@ -14,7 +14,7 @@ Installation
 #### Download from Maven Central
 
 ```sh
-curl -O 'http://central.maven.org/maven2/net/thisptr/java-influxdb-metrics-agent/0.0.4/java-influxdb-metrics-agent-0.0.4.jar'
+curl -O 'http://central.maven.org/maven2/net/thisptr/java-influxdb-metrics-agent/0.0.5/java-influxdb-metrics-agent-0.0.5.jar'
 ```
 
 ### Runtime dependencies
@@ -41,7 +41,7 @@ Add `-javaagent` option to JVM arguments.
 At least, `servers` and `database` must be specified.
 
 ```
--javaagent:/opt/java-influxdb-metrics-agent-0.0.4.jar=servers=influxdb.example.com,database=test
+-javaagent:/opt/java-influxdb-metrics-agent-0.0.5.jar=servers=influxdb.example.com,database=test
 ```
 
 Configuration
@@ -73,7 +73,7 @@ Metric-specific options can be specified in `/MBEAN_REGEX/ { <KEY1> = <VALUE1>, 
 To read configurations from `agent.conf`, add `@agent.conf` somewhere in `-javaagent` option.
 
 ```sh
--javaagent:/opt/java-influxdb-metrics-agent-0.0.4.jar=tags.host=`hostname`,@agent.conf
+-javaagent:/opt/java-influxdb-metrics-agent-0.0.5.jar=tags.host=`hostname`,@agent.conf
 ```
 
 Examples
@@ -83,7 +83,7 @@ Examples
 
 ```sh
 # FILE: flume-env.sh
-export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.4.jar=tags.host=`hostname`,@/opt/flume/agent.conf"
+export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.5.jar=tags.host=`hostname`,@/opt/flume/agent.conf"
 ```
 
 ```cs
@@ -110,14 +110,14 @@ namekeys = type
 
 If you prefer, an equivalent configuration can be set without `agent.conf`:
 ```sh
-export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.4.jar=tags.host=`hostname`,servers=influxdb.example.com,database=myapp,interval=10,namekeys=type,/JMImplementation/{exclude=true},/org.apache.flume.*/{namekeys=}"
+export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.5.jar=tags.host=`hostname`,servers=influxdb.example.com,database=myapp,interval=10,namekeys=type,/JMImplementation/{exclude=true},/org.apache.flume.*/{namekeys=}"
 ```
 
 ### Apache Tomcat 8
 
 ```sh
 # FILE: setenv.sh
-export CATALINA_OPTS="-javaagent:/opt/java-influxdb-metrics-agent-0.0.4.jar=tags.host=`hostname`,@/opt/tomcat/agent.conf"
+export CATALINA_OPTS="-javaagent:/opt/java-influxdb-metrics-agent-0.0.5.jar=tags.host=`hostname`,@/opt/tomcat/agent.conf"
 
 # Tomcat does not have slf4j-api in SYSTEM classloader ( https://tomcat.apache.org/tomcat-8.0-doc/class-loader-howto.html ). Need to download manually.
 #  - curl -o /opt/tomcat/slf4j-api-1.7.21.jar http://central.maven.org/maven2/org/slf4j/slf4j-api/1.7.21/slf4j-api-1.7.21.jar
@@ -151,7 +151,7 @@ Because MBeans exposed by Metrics does not have a `type=` key property even thro
 
 ```sh
 # FILE: hbase-env.sh
-export HBASE_JMX_BASE="-javaagent:/opt/java-influxdb-metrics-agent-0.0.4.jar=servers=localhost,tags.host=`hostname`,tags.active='\${jmx|Hadoop:service=HBase,name=Master,sub=Server:tag.isActiveMaster}',database=hbase,interval=10,namekeys=type,/JMImplementation/{exclude=true},/Hadoop/{namekeys='service,name,sub'},/Hadoop::tag\\\\..+/{exclude=true} -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
+export HBASE_JMX_BASE="-javaagent:/opt/java-influxdb-metrics-agent-0.0.5.jar=servers=localhost,tags.host=`hostname`,tags.active='\${jmx|Hadoop:service=HBase,name=Master,sub=Server:tag.isActiveMaster}',database=hbase,interval=10,namekeys=type,/JMImplementation/{exclude=true},/Hadoop/{namekeys='service,name,sub'},/Hadoop::tag\\\\..+/{exclude=true} -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
 export HBASE_MASTER_OPTS="$HBASE_MASTER_OPTS $HBASE_JMX_BASE -Dcom.sun.management.jmxremote.port=10101"
 export HBASE_REGIONSERVER_OPTS="$HBASE_REGIONSERVER_OPTS $HBASE_JMX_BASE -Dcom.sun.management.jmxremote.port=10102"
 ```
