@@ -17,16 +17,6 @@ Installation
 curl -O 'http://central.maven.org/maven2/net/thisptr/java-influxdb-metrics-agent/0.0.5/java-influxdb-metrics-agent-0.0.5.jar'
 ```
 
-### Runtime dependencies
-
-#### slf4j-api (required)
-
-Since the version of slf4j-api and its binding must match, slf4j-api is not included in the agent jar and must be provided at runtime. Usually, slf4j-api is already on your classpath (because many applications depend on it), but if it's not, you have to download it from [the official site](http://www.slf4j.org/download.html).
-
-#### slf4j binding (recommended)
-
-You will need one of slf4j bindings (logback, log4j + slf4j-log4j, etc.) for logging to work properly. As with the case of slf4j-api, it is probably on your classpath already. You will not see any helpful log messages, even in the case of connection failures to InfluxDB servers, if no slf4j binding is provided.
-
 Usage
 -----
 
@@ -58,6 +48,8 @@ Configuration
 | password | root | The password to use when connecting to InfluxDB servers. |
 | tags.*&lt;key&gt;* | - | Additional tags to set on each measurements. For example, to add a `host` tag, configuration should be: `tags.host = foo.example.com` |
 | retention | - | The name of the RetentionPolicy to write metrics to. If not specified, `DEFAULT` policy is used. |
+| log.level | INFO | One of OFF, ERROR, WARN, INFO, DEBUG, TRACE, ALL. |
+| log.path | (empty) | A path to agent log file. Set '' (empty) to write to STDERR or set - (hyphen) to STDOUT. |
 
 ### Metric-specific options
 
@@ -118,11 +110,6 @@ export JAVA_OPTS="-javaagent:/opt/flume/java-influxdb-metrics-agent-0.0.5.jar=ta
 ```sh
 # FILE: setenv.sh
 export CATALINA_OPTS="-javaagent:/opt/java-influxdb-metrics-agent-0.0.5.jar=tags.host=`hostname`,@/opt/tomcat/agent.conf"
-
-# Tomcat does not have slf4j-api in SYSTEM classloader ( https://tomcat.apache.org/tomcat-8.0-doc/class-loader-howto.html ). Need to download manually.
-#  - curl -o /opt/tomcat/slf4j-api-1.7.21.jar http://central.maven.org/maven2/org/slf4j/slf4j-api/1.7.21/slf4j-api-1.7.21.jar
-#  - curl -o /opt/tomcat/slf4j-simple-1.7.21.jar http://central.maven.org/maven2/org/slf4j/slf4j-api/1.7.21/slf4j-simple-1.7.21.jar
-export CLASSPATH="/opt/tomcat/slf4j-api-1.7.21.jar:/opt/tomcat/slf4j-simple-1.7.21.jar"
 ```
 
 ```cs
