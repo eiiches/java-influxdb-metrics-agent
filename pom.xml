@@ -6,7 +6,7 @@
 	<artifactId>java-influxdb-metrics-agent</artifactId>
 	<name>InfluxDB Metrics Agent</name>
 	<packaging>jar</packaging>
-	<version>0.0.4</version>
+	<version>0.0.5</version>
 	<description>Java agent for collecting and reporting metrics to InfluxDB</description>
 	<url>https://github.com/eiiches/java-influxdb-metrics-agent</url>
 
@@ -29,7 +29,7 @@
 		<connection>scm:git:git@github.com:eiiches/java-influxdb-metrics-agent.git</connection>
 		<developerConnection>scm:git:git@github.com:eiiches/java-influxdb-metrics-agent.git</developerConnection>
 		<url>git@github.com:eiiches/java-influxdb-metrics-agent.git</url>
-		<tag>java-influxdb-metrics-agent-0.0.4</tag>
+		<tag>java-influxdb-metrics-agent-0.0.5</tag>
 	</scm>
 
 	<distributionManagement>
@@ -47,14 +47,7 @@
 		<dependency>
 			<groupId>org.influxdb</groupId>
 			<artifactId>influxdb-java</artifactId>
-			<version>2.2</version>
-		</dependency>
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>1.7.21</version>
-			<!-- since the version of slf4j-api and its bindings must match, let users choose their slf4j-api version -->
-			<scope>provided</scope>
+			<version>2.5</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -63,10 +56,9 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-simple</artifactId>
-			<version>1.7.21</version>
-			<scope>test</scope>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>1.1.8</version>
 		</dependency>
 	</dependencies>
 
@@ -86,43 +78,45 @@
 							<relocations>
 								<relocation>
 									<pattern>com.google.common</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.com.google.common</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.com.google.common</shadedPattern>
 								</relocation>
 								<relocation>
 									<pattern>com.google.thirdparty</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.com.google.thirdparty</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.com.google.thirdparty</shadedPattern>
 								</relocation>
 								<relocation>
 									<pattern>com.google.gson</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.com.google.gson</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.com.google.gson</shadedPattern>
 								</relocation>
 								<relocation>
 									<pattern>org.influxdb</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.org.influxdb</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.org.influxdb</shadedPattern>
 								</relocation>
 								<relocation>
 									<pattern>okio</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.okio</shadedPattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.okio</shadedPattern>
 								</relocation>
 								<relocation>
-									<pattern>com.squareup.okhttp</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.com.squareup.okhttp</shadedPattern>
+									<pattern>okhttp3</pattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.okhttp3</shadedPattern>
 								</relocation>
 								<relocation>
-									<pattern>retrofit</pattern>
-									<shadedPattern>net.thisptr.flume.influxdb.reporter.shade.retrofit</shadedPattern>
+									<pattern>com.squareup</pattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.com.squareup</shadedPattern>
+								</relocation>
+								<relocation>
+									<pattern>retrofit2</pattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.retrofit2</shadedPattern>
+								</relocation>
+								<relocation>
+									<pattern>ch.qos.logback</pattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.ch.qos.logback</shadedPattern>
+								</relocation>
+								<relocation>
+									<pattern>org.slf4j</pattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.org.slf4j</shadedPattern>
 								</relocation>
 							</relocations>
-							<artifactSet>
-								<includes>
-									<include>com.google.guava:guava</include>
-									<include>org.influxdb:influxdb-java</include>
-									<include>com.google.code.gson:gson</include>
-									<include>com.squareup.retrofit</include>
-									<include>com.squareup.okhttp</include>
-									<include>com.squareup.okio:okio</include>
-								</includes>
-							</artifactSet>
 							<minimizeJar>true</minimizeJar>
 						</configuration>
 					</execution>
@@ -228,7 +222,7 @@
 			<dependency>
 				<groupId>com.google.guava</groupId>
 				<artifactId>guava</artifactId>
-				<version>18.0</version>
+				<version>20.0</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

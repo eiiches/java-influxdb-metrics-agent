@@ -9,24 +9,20 @@ import java.util.stream.StreamSupport;
 
 import javax.management.ObjectName;
 
-import net.thisptr.java.influxdb.metrics.agent.parser.Configuration.ResolvedConfiguration;
-import net.thisptr.java.influxdb.metrics.agent.parser.ConfigurationException;
-import net.thisptr.java.influxdb.metrics.agent.parser.ConfigurationParser;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
 
-public class JvmAgentConfig {
-	private static final Logger LOG = LoggerFactory.getLogger(JvmAgent.class);
+import net.thisptr.java.influxdb.metrics.agent.parser.Configuration.ResolvedConfiguration;
+import net.thisptr.java.influxdb.metrics.agent.parser.ConfigurationException;
+import net.thisptr.java.influxdb.metrics.agent.parser.ConfigurationParser;
 
+public class JvmAgentConfig {
 	public static final int DEFAULT_PORT = 8086;
 	public static final int DEFAULT_INTERVAL = 30;
 	public static final String DEFAULT_USER = "root";
 	public static final String DEFAULT_PASSWORD = "root";
+	public static final String DEFAULT_LOG_LEVEL = "INFO";
 
 	public List<HostAndPort> servers;
 	public int interval;
@@ -35,6 +31,9 @@ public class JvmAgentConfig {
 	public String password;
 	public Map<String, String> tags;
 	public String retention;
+
+	public String logLevel;
+	public String logPath;
 
 	private ResolvedConfiguration config;
 
@@ -115,6 +114,9 @@ public class JvmAgentConfig {
 
 		final Map<String, String> tags = context.getSubProperties("tags.");
 
+		final String logLevel = context.getString("log.level", DEFAULT_LOG_LEVEL);
+		final String logPath = context.getString("log.path"); // stderr
+
 		final JvmAgentConfig config = new JvmAgentConfig();
 		config.servers = hostAndPorts;
 		config.interval = interval;
@@ -123,6 +125,8 @@ public class JvmAgentConfig {
 		config.password = password;
 		config.tags = tags;
 		config.retention = retention;
+		config.logLevel = logLevel;
+		config.logPath = logPath;
 		return config;
 	}
 
