@@ -47,7 +47,7 @@
 		<dependency>
 			<groupId>org.influxdb</groupId>
 			<artifactId>influxdb-java</artifactId>
-			<version>2.2</version>
+			<version>2.5</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -97,12 +97,16 @@
 									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.okio</shadedPattern>
 								</relocation>
 								<relocation>
-									<pattern>com.squareup.okhttp</pattern>
-									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.com.squareup.okhttp</shadedPattern>
+									<pattern>okhttp3</pattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.okhttp3</shadedPattern>
 								</relocation>
 								<relocation>
-									<pattern>retrofit</pattern>
-									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.retrofit</shadedPattern>
+									<pattern>com.squareup</pattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.com.squareup</shadedPattern>
+								</relocation>
+								<relocation>
+									<pattern>retrofit2</pattern>
+									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.retrofit2</shadedPattern>
 								</relocation>
 								<relocation>
 									<pattern>ch.qos.logback</pattern>
@@ -113,19 +117,6 @@
 									<shadedPattern>net.thisptr.java.influxdb.reporter.shade.org.slf4j</shadedPattern>
 								</relocation>
 							</relocations>
-							<artifactSet>
-								<includes>
-									<include>com.google.guava:guava</include>
-									<include>org.influxdb:influxdb-java</include>
-									<include>com.google.code.gson:gson</include>
-									<include>com.squareup.retrofit</include>
-									<include>com.squareup.okhttp</include>
-									<include>com.squareup.okio:okio</include>
-									<include>org.slf4j:slf4j-api</include>
-									<include>ch.qos.logback:logback-core</include>
-									<include>ch.qos.logback:logback-classic</include>
-								</includes>
-							</artifactSet>
 							<minimizeJar>true</minimizeJar>
 						</configuration>
 					</execution>
@@ -231,7 +222,7 @@
 			<dependency>
 				<groupId>com.google.guava</groupId>
 				<artifactId>guava</artifactId>
-				<version>18.0</version>
+				<version>20.0</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
